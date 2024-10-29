@@ -21,13 +21,15 @@ Abiotic_Factor :: struct
     tp_data: Teleport_Data;
 }
 
+//Z axis offset: 0x1B9B9A0
+
 init_abf_cheat :: (using abf: *Abiotic_Factor, game: Process_Attach)
 {
-    hotbar_slot1_addr := get_dynamic_memory_allocation_addr(game, 0x08553140, u32.[0xC8, 0x618, 0x10, 0x528, 0x2F0, 0xB0, 0x30]);
+    hotbar_slot1_addr := get_dynamic_memory_allocation_addr(game, 0x0847F600, u32.[0x1E8, 0x30, 0xEF8, 0x280, 0x90, 0x370, 0x30]);
 
     stamina_addr := get_dynamic_memory_allocation_addr(game, 0x074AEF68, u32.[0, 0x20, 0x278, 0x1C8, 0xB0, 0x90, 0x8A4]);
 
-    zaxis_addr := get_dynamic_memory_allocation_addr(game, 0x074F6710, u32.[0x110, 0x50, 0x180, 0xC0, 0x48, 0xB0, 0x270]);
+    zaxis_addr := get_dynamic_memory_allocation_addr(game, 0x0849F0B8, u32.[0x50, 0x2D8, 0xF60, 0x1F0, 0x450, 0xB8, 0x200]);
 
     table_add(*mem_addr, "hotbar_slot1", hotbar_slot1_addr);
     table_add(*mem_addr, "stamina", stamina_addr);
@@ -37,13 +39,13 @@ init_abf_cheat :: (using abf: *Abiotic_Factor, game: Process_Attach)
 abf_cheat_ui :: (abf: *Abiotic_Factor, game: Process_Attach)
 {
     hotbar_slot1_input(abf, game);
-/*
-    ImGui.NewLine();
-    ImGui.Separator();
-    checkbox_cheat(abf, game);
     ImGui.NewLine();
     ImGui.Separator();
     teleport_menu(abf, game);
+/*
+    checkbox_cheat(abf, game);
+    ImGui.NewLine();
+    ImGui.Separator();
 */
 }
 

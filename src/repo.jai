@@ -50,7 +50,7 @@ repo_cheat_ui :: (repo: *Repo, game: Process_Attach)
     if repo.unlimited_stamina
     {
         read_value(game, repo.max_stamina_addr, *repo.max_stamina);
-        print("MAX_STAMINA: %\n", repo.max_stamina);
+        //print("MAX_STAMINA: %\n", repo.max_stamina);
         write_value(game, repo.stamina_addr, *repo.max_stamina);
     }
 

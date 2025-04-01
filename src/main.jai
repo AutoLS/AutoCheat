@@ -31,7 +31,7 @@ main :: ()
 		return;
 	}
 
-	print("%\n", to_string(ImGui.GetVersion()));
+	//print("%\n", to_string(ImGui.GetVersion()));
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, xx SDL_GL_CONTEXT_PROFILE_CORE);
 	gl_context := SDL_GL_CreateContext(window);
     if !gl_context 
@@ -143,6 +143,11 @@ main :: ()
 					cheat.game = attach_process(SUPERMARKET_EXE_NAME, SUPERMARKET_MODULE_NAME);
 					init_supermarket_together_cheat(*cheat.spt, cheat.game);
 				}
+				case .Repo;
+				{
+					cheat.game = attach_process(REPO_EXE_NAME, REPO_MODULE_NAME);
+					init_repo_cheat(*cheat.repo, cheat.game);
+				}
 			}
 		} 
 		
@@ -178,6 +183,7 @@ main :: ()
 				if ImGui.MenuItem("Abiotic Factor", null) cheat.current_game = .Abiotic_Factor;
 				if ImGui.MenuItem("Ale and Tale Tavern", null) cheat.current_game = .Ale_and_Tale;
 				if ImGui.MenuItem("Supermarket Together", null) cheat.current_game = .Supermarket_Together;
+				if ImGui.MenuItem("Repo", null) cheat.current_game = .Repo;
 			}
 		}
 
@@ -188,6 +194,7 @@ main :: ()
 				case .Abiotic_Factor; abf_cheat_ui(*cheat.abf, cheat.game);
 				case .Ale_and_Tale; ale_and_tale_cheat_ui(*cheat.ale_and_tale, cheat.game);
 				case .Supermarket_Together; supermarket_cheat_ui(*cheat.spt, cheat.game);
+				case .Repo; repo_cheat_ui(*cheat.repo, cheat.game);
 			}
 		}
 		else

@@ -5,7 +5,9 @@ Repo :: struct
 {
     money: s32;
     hp: s32;
+    max_hp: s32;
     saved_hp: s32;
+    saved_max_hp: s32;
     stamina: float32;
     max_stamina: float32;
 
@@ -16,6 +18,11 @@ Repo :: struct
     stamina_addr: *u64;
     max_stamina_addr: *u64;
     hp_addr: *u64;
+    max_hp_addr: *u64;
+
+    position_addr: [3] *u64;
+
+    tp_data: Teleport_Data;
 }
 
 //money_offset :: 0x2DB5C;
@@ -40,12 +47,99 @@ init_repo_cheat :: (using cheat: *Repo, game: Process_Attach)
         u32.[0x178, 0xA00, 0x60, 0xAC]
     );
 
+    max_hp_addr = xx (cast(*u8)hp_addr + 0x8);
+
+    position_addr[1] = get_dynamic_memory_allocation_addr
+    (
+        game, 0x01D1F4D8,
+        u32.[0x1D0, 0xF80, 0xCD0, 0x960, 0x0, 0x154]
+    );
+    position_addr[0] = cast(*u64)(cast(*u8)position_addr[1]-4);
+    position_addr[2] = cast(*u64)(cast(*u8)position_addr[1]+4);
+
     max_stamina_addr = cast(*u64)(cast(*u8)stamina_addr-4);
 
 }
 
+repo_tp_menu :: (using repo: *Repo, game: Process_Attach)
+{
+    using repo.tp_data;
+    position: Vector3;
+    pos_x: float32;
+    pos_y: float32;
+    pos_z: float32;
+
+    read_value(game, position_addr[0], *pos_x);
+    read_value(game, position_addr[1], *pos_y);
+    read_value(game, position_addr[2], *pos_z);
+
+    position = Vector3.{xx pos_x, xx pos_y, xx pos_z};
+
+    ImGui.Text("Teleport");
+    ImGui.Text("(%, %, %)", cast(int)position.x, cast(int)position.y, cast(int)position.z);
+    ImGui.SetNextItemWidth(200);
+    ImGui.InputText("Name", location_name_text.data, location_name_text.count);
+    if ImGui.IsItemHovered() 
+    {
+        ImGui.BeginTooltip();
+        ImGui.PushTextWrapPos(400);
+        ImGui.TextUnformatted("Add your current location into teleport list to teleport.");
+        ImGui.PopTextWrapPos();
+        ImGui.EndTooltip();
+    }
+    if ImGui.Button("Add")
+    {
+        name := copy_string(cast(string)location_name_text);
+        array_add(*saved_location_names, name);
+        
+        table_add(*saved_location, name, position);
+
+        for location_name_text
+        {
+            location_name_text[it_index] = xx "";
+        }
+    }
+
+    location_names: [..] *u8;
+    location_names.allocator = temp;
+
+    for saved_location_names array_add(*location_names, to_c_string(it));
+
+    ImGui.SetNextItemWidth(200);
+    if location_names.count > 0
+    {
+        combo_box("Locations", location_names, *selected_location_index);
+        if ImGui.Button("Teleport##1")
+        {
+            pos, found := table_find(*saved_location, saved_location_names[selected_location_index]);
+            if found
+            {
+                print("Teleporting to position: %\n", pos);
+                pos_x: float32 = xx pos.x;
+                pos_y: float32 = xx pos.y; 
+                pos_z: float32 = xx pos.z;
+
+                write_value(game, position_addr[0], *pos_x);
+                write_value(game, position_addr[1], *pos_y);
+                write_value(game, position_addr[2], *pos_z);
+            }
+        }
+        if ImGui.IsItemHovered() 
+        {
+            ImGui.BeginTooltip();
+            ImGui.PushTextWrapPos(400);
+            ImGui.TextUnformatted("You may have to click few times for it to work.");
+            ImGui.PopTextWrapPos();
+            ImGui.EndTooltip();
+        }
+    }
+}
+
 repo_cheat_ui :: (repo: *Repo, game: Process_Attach)
 {
+    //Keep recalculating dynamic address so you dont have to relaunch every time when you start a new game or loading another save
+    init_repo_cheat(repo, game);
+
     ImGui.Checkbox("Unlimited Stamina", *repo.unlimited_stamina);
     if repo.unlimited_stamina
     {
@@ -59,10 +153,12 @@ repo_cheat_ui :: (repo: *Repo, game: Process_Attach)
         if repo.unlimited_hp
         {
             read_value(game, repo.hp_addr, *repo.saved_hp);
+            read_value(game, repo.max_hp_addr, *repo.saved_max_hp);
         }
         else
         {
             write_value(game, repo.hp_addr, *repo.saved_hp);
+            write_value(game, repo.max_hp_addr, *repo.saved_max_hp);
         }
     }
 
@@ -70,6 +166,7 @@ repo_cheat_ui :: (repo: *Repo, game: Process_Attach)
     {
         temp_hp: s32 = 9999;
         write_value(game, repo.hp_addr, *temp_hp);
+        write_value(game, repo.max_hp_addr, *temp_hp);
     }
 
     read_value(game, repo.hp_addr, *repo.hp);
@@ -78,6 +175,14 @@ repo_cheat_ui :: (repo: *Repo, game: Process_Attach)
     if ImGui.InputScalar("Edit HP", ImGui.DataType.S32, *repo.hp, cast(*void)*step, cast(*void)*step)
     {
         write_value(game, repo.hp_addr, *repo.hp);
+    }
+    ImGui.PopItemWidth();
+
+    read_value(game, repo.max_hp_addr, *repo.max_hp);
+    ImGui.PushItemWidth(100);
+    if ImGui.InputScalar("Edit Max HP", ImGui.DataType.S32, *repo.max_hp, cast(*void)*step, cast(*void)*step)
+    {
+        write_value(game, repo.max_hp_addr, *repo.max_hp);
     }
     ImGui.PopItemWidth();
 
@@ -91,4 +196,6 @@ repo_cheat_ui :: (repo: *Repo, game: Process_Attach)
         write_value(game, repo.money_addr, *repo.money);
     }
     ImGui.PopItemWidth();
+
+    repo_tp_menu(repo, game);
 }

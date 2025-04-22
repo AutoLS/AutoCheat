@@ -11,6 +11,15 @@ Game_Name :: enum u32
     Repo;
 }
 
+Teleport_Data :: struct
+{
+    location_name_text: [128] u8;
+    saved_location_names: [..] string;
+    saved_location: Table(string, Vector3);
+    selected_location_index: s32;
+    custom_coordinate_tp: [3] float; 
+}
+
 Cheat :: struct
 {
     game: Process_Attach;

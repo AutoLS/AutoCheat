@@ -1,14 +1,5 @@
 ABIOTIC_FACTOR_EXE_NAME :: "AbioticFactor-Win64-Shipping.exe";
 
-Teleport_Data :: struct
-{
-    location_name_text: [128] u8;
-    saved_location_names: [..] string;
-    saved_location: Table(string, Vector3);
-    selected_location_index: s32;
-    custom_coordinate_tp: [3] float; 
-}
-
 Abiotic_Factor :: struct
 {
     item_count: u32;

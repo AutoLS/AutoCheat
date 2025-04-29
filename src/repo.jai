@@ -16,7 +16,7 @@ Repo :: struct
     sprint_speed: float = 5.0;
 
     unlimited_stamina: bool;
-    unlimited_hp: bool;
+    god_mode: bool;
     unlimited_jumps: bool;
 
     money_addr: *u64;
@@ -28,6 +28,7 @@ Repo :: struct
     range_addr: *u64;
     sprint_speed_addr: *u64;
     extra_jumps_addr: *u64;
+    god_mode_addr: *u64;
 
     position_addr: [3] *u64;
 
@@ -38,6 +39,7 @@ Repo :: struct
 /* NOTES:
 - extra jump offset from sprintspeed: 0x58
 - strength offset from range: 0x10C
+
 */
 
 init_repo_cheat :: (using cheat: *Repo, game: Process_Attach)
@@ -61,6 +63,7 @@ init_repo_cheat :: (using cheat: *Repo, game: Process_Attach)
     );
 
     max_hp_addr = xx (cast(*u8)hp_addr + 0x8);
+    god_mode_addr = xx (cast(*u8)hp_addr + 0xC);
 
     position_addr[1] = get_dynamic_memory_allocation_addr
     (
@@ -100,6 +103,10 @@ repo_tp_menu :: (using repo: *Repo, game: Process_Attach)
     read_value(game, position_addr[0], *pos_x);
     read_value(game, position_addr[1], *pos_y);
     read_value(game, position_addr[2], *pos_z);
+
+    // temp_pos: Vector3;
+    // temp_pos_addr: *u64 = xx 0x1E78ECEFEB0;
+    // read_value(game, temp_pos_addr, *temp_pos);
 
     position = Vector3.{xx pos_x, xx pos_y, xx pos_z};
 
@@ -173,18 +180,11 @@ repo_checkbox_cheats :: (using repo: *Repo, game: Process_Attach)
         write_value(game, stamina_addr, *max_stamina);
     }
 
-    if ImGui.Checkbox("Unlimited HP", *unlimited_hp)
+    ImGui.Checkbox("God mode", *god_mode);
+
+    if god_mode
     {
-        if unlimited_hp
-        {
-            read_value(game, hp_addr, *saved_hp);
-            read_value(game, max_hp_addr, *saved_max_hp);
-        }
-        else
-        {
-            write_value(game, hp_addr, *saved_hp);
-            write_value(game, max_hp_addr, *saved_max_hp);
-        }
+        write_value(game, god_mode_addr, *god_mode);    
     }
 
     if ImGui.Checkbox("Unlimited Jumps", *unlimited_jumps)
@@ -197,13 +197,6 @@ repo_checkbox_cheats :: (using repo: *Repo, game: Process_Attach)
         {
             write_value(game, extra_jumps_addr, *jumps);
         }
-    }
-
-    if unlimited_hp
-    {
-        temp_hp: s32 = 9999;
-        write_value(game, hp_addr, *temp_hp);
-        write_value(game, max_hp_addr, *temp_hp);
     }
 
     if unlimited_jumps

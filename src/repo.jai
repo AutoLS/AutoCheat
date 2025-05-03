@@ -14,54 +14,60 @@ Repo :: struct
     strength: float = 1.0;
     range: float = 2.5;
     sprint_speed: float = 5.0;
+    gravity: float = 30.0;
 
     unlimited_stamina: bool;
     god_mode: bool;
     unlimited_jumps: bool;
+    disable_overcharge: bool;
 
     money_addr: *u64;
     stamina_addr: *u64;
     max_stamina_addr: *u64;
+    gravity_addr: *u64;
     hp_addr: *u64;
+    hp_prev_addr: *u64;
     max_hp_addr: *u64;
     strength_addr: *u64;
     range_addr: *u64;
     sprint_speed_addr: *u64;
     extra_jumps_addr: *u64;
     god_mode_addr: *u64;
+    disable_overcharge_addr: *u64;
 
     position_addr: [3] *u64;
 
     tp_data: Teleport_Data;
 }
 
-//money_offset :: 0x2DB5C;
-/* NOTES:
-- extra jump offset from sprintspeed: 0x58
-- strength offset from range: 0x10C
+/* 
+PlayerController: 
+0x110 - SprintSpeed
+0x168 - JumpExtra
+0x174 - Gravity
+0x18D - DisableOvercharge
+0x194 - Stamina
 
+PhysGrabber:
+0x118 - grabRange
+0x230 - grabStrength
 */
 
 init_repo_cheat :: (using cheat: *Repo, game: Process_Attach)
 {
     money_addr = get_dynamic_memory_allocation_addr
     (
-        game, 0x01C1DF80, 
-        u32.[0xFC8, 0xAC8, 0x520, 0x68, 0x158, 0x48]
-    );
-
-    stamina_addr = get_dynamic_memory_allocation_addr
-    (
-        game, 0x01D20A78, 
-        u32.[0x50, 0xD0, 0x8, 0x1B8, 0x4C4, 0x0, 0x194]
+        game, 0x01C28DC0, 
+        u32.[0x78, 0x350, 0x978, 0x48]
     );
 
     hp_addr = get_dynamic_memory_allocation_addr
     (
-        game, 0x01C1FF00, 
-        u32.[0x178, 0xA00, 0x60, 0xAC]
+        game, 0x01C28DC0, 
+        u32.[0x78, 0x9E0, 0x68, 0xB4]
     );
 
+    hp_prev_addr = xx (cast(*u8)hp_addr + 0x4);
     max_hp_addr = xx (cast(*u8)hp_addr + 0x8);
     god_mode_addr = xx (cast(*u8)hp_addr + 0xC);
 
@@ -73,23 +79,25 @@ init_repo_cheat :: (using cheat: *Repo, game: Process_Attach)
     position_addr[0] = cast(*u64)(cast(*u8)position_addr[1]-4);
     position_addr[2] = cast(*u64)(cast(*u8)position_addr[1]+4);
 
-    max_stamina_addr = cast(*u64)(cast(*u8)stamina_addr-4);
-
     sprint_speed_addr = get_dynamic_memory_allocation_addr
     (
-        game, 0x01D014A8,
-        u32.[0xD40, 0x3B0, 0x3E0, 0xD8, 0x38, 0x110]
+        game, 0x01CFFED8,
+        u32.[0x340, 0xEC0, 0x310, 0x110]
     );
 
+    stamina_addr = cast(*u64)(cast(*u8)sprint_speed_addr+0x84);
+    max_stamina_addr = cast(*u64)(cast(*u8)stamina_addr-4);
     extra_jumps_addr = cast(*u64)(cast(*u8)sprint_speed_addr+0x58);
+    gravity_addr = cast(*u64)(cast(*u8)sprint_speed_addr+0x64);
+    disable_overcharge_addr = cast(*u64)(cast(*u8)sprint_speed_addr+0x7D);
 
     range_addr = get_dynamic_memory_allocation_addr
     (
-        game, 0x01D056B8,
-        u32.[0x0, 0x18, 0xA50, 0x6B8, 0x270, 0x110]
+        game, 0x01CFFA88,
+        u32.[0x4A0, 0xD10, 0x3E0, 0x118]
     );
 
-    strength_addr = cast(*u64)(cast(*u8)range_addr+0x10C);
+    strength_addr = cast(*u64)(cast(*u8)range_addr+0x118);
 }
 
 repo_tp_menu :: (using repo: *Repo, game: Process_Attach)
@@ -180,11 +188,18 @@ repo_checkbox_cheats :: (using repo: *Repo, game: Process_Attach)
         write_value(game, stamina_addr, *max_stamina);
     }
 
-    ImGui.Checkbox("God mode", *god_mode);
+    ImGui.Checkbox("God Mode", *god_mode);
 
     if god_mode
     {
         write_value(game, god_mode_addr, *god_mode);    
+    }
+
+    ImGui.Checkbox("Disable Overcharge Meter", *disable_overcharge);
+
+    if disable_overcharge
+    {
+        write_value(game, disable_overcharge_addr, *disable_overcharge);    
     }
 
     if ImGui.Checkbox("Unlimited Jumps", *unlimited_jumps)
@@ -214,6 +229,7 @@ repo_edit_hp :: (repo: *Repo, game: Process_Attach)
     if ImGui.InputScalar("Edit HP", ImGui.DataType.S32, *repo.hp, cast(*void)*step, cast(*void)*step)
     {
         write_value(game, repo.hp_addr, *repo.hp);
+        write_value(game, repo.hp_prev_addr, *repo.hp);
     }
     ImGui.PopItemWidth();
 
@@ -258,9 +274,17 @@ repo_slider_cheats :: (using repo: *Repo, game: Process_Attach)
 
     read_value(game, repo.sprint_speed_addr, *sprint_speed);
     ImGui.PushItemWidth(200);
-    if ImGui.SliderFloat("Edit Sprint speed", *sprint_speed, 5, 100, "%.0f")
+    if ImGui.SliderFloat("Edit Sprint Speed", *sprint_speed, 5, 100, "%.0f")
     {
         write_value(game, repo.sprint_speed_addr, *sprint_speed);
+    }
+    ImGui.PopItemWidth();
+
+    read_value(game, repo.gravity_addr, *gravity);
+    ImGui.PushItemWidth(200);
+    if ImGui.SliderFloat("Edit Gravity", *gravity, -30, 30, "%.0f")
+    {
+        write_value(game, repo.gravity_addr, *gravity);
     }
     ImGui.PopItemWidth();
 }
@@ -269,6 +293,8 @@ repo_cheat_ui :: (repo: *Repo, game: Process_Attach)
 {
     //Keep recalculating dynamic address so you dont have to relaunch every time when you start a new game or loading another save
     init_repo_cheat(repo, game);
+
+    ImGui.BeginChild("Repo", .{385, 365}, true, IMGUI_WINDOW_FLAGS.AlwaysVerticalScrollbar);
 
     repo_checkbox_cheats(repo, game);
 
@@ -279,4 +305,6 @@ repo_cheat_ui :: (repo: *Repo, game: Process_Attach)
     repo_slider_cheats(repo, game);
 
     repo_tp_menu(repo, game);
+
+    ImGui.EndChild();
 }

@@ -180,9 +180,9 @@ main :: ()
 			if ImGui.BeginMenu("Menu")
 			{
 				defer ImGui.EndMenu();
-				if ImGui.MenuItem("Abiotic Factor", null) cheat.current_game = .Abiotic_Factor;
-				if ImGui.MenuItem("Ale and Tale Tavern", null) cheat.current_game = .Ale_and_Tale;
-				if ImGui.MenuItem("Supermarket Together", null) cheat.current_game = .Supermarket_Together;
+				//if ImGui.MenuItem("Abiotic Factor", null) cheat.current_game = .Abiotic_Factor;
+				//if ImGui.MenuItem("Ale and Tale Tavern", null) cheat.current_game = .Ale_and_Tale;
+				//if ImGui.MenuItem("Supermarket Together", null) cheat.current_game = .Supermarket_Together;
 				if ImGui.MenuItem("Repo", null) cheat.current_game = .Repo;
 			}
 		}

@@ -67,17 +67,17 @@ init_repo_cheat :: (using cheat: *Repo, game: Process_Attach)
         u32.[0x78, 0x9E0, 0x68, 0xB4]
     );
 
-    hp_prev_addr = xx (cast(*u8)hp_addr + 0x4);
-    max_hp_addr = xx (cast(*u8)hp_addr + 0x8);
-    god_mode_addr = xx (cast(*u8)hp_addr + 0xC);
+    hp_prev_addr = get_address_with_offset(hp_addr, 0x4);
+    max_hp_addr = get_address_with_offset(hp_addr, 0x8);
+    god_mode_addr = get_address_with_offset(hp_addr, 0xC);
 
     position_addr[1] = get_dynamic_memory_allocation_addr
     (
         game, 0x01D1F4D8,
         u32.[0x1D0, 0xF80, 0xCD0, 0x960, 0x0, 0x154]
     );
-    position_addr[0] = cast(*u64)(cast(*u8)position_addr[1]-4);
-    position_addr[2] = cast(*u64)(cast(*u8)position_addr[1]+4);
+    position_addr[0] = get_address_with_offset(position_addr[1], -4);
+    position_addr[2] = get_address_with_offset(position_addr[1], 4);
 
     sprint_speed_addr = get_dynamic_memory_allocation_addr
     (
@@ -85,11 +85,11 @@ init_repo_cheat :: (using cheat: *Repo, game: Process_Attach)
         u32.[0x340, 0xEC0, 0x310, 0x110]
     );
 
-    stamina_addr = cast(*u64)(cast(*u8)sprint_speed_addr+0x84);
-    max_stamina_addr = cast(*u64)(cast(*u8)stamina_addr-4);
-    extra_jumps_addr = cast(*u64)(cast(*u8)sprint_speed_addr+0x58);
-    gravity_addr = cast(*u64)(cast(*u8)sprint_speed_addr+0x64);
-    disable_overcharge_addr = cast(*u64)(cast(*u8)sprint_speed_addr+0x7D);
+    stamina_addr = get_address_with_offset(sprint_speed_addr, 0x84);
+    max_stamina_addr = get_address_with_offset(stamina_addr, -0x4);
+    extra_jumps_addr = get_address_with_offset(sprint_speed_addr, 0x58);
+    gravity_addr = get_address_with_offset(sprint_speed_addr, 0x64);
+    disable_overcharge_addr = get_address_with_offset(sprint_speed_addr, 0x7D);
 
     range_addr = get_dynamic_memory_allocation_addr
     (
@@ -97,7 +97,7 @@ init_repo_cheat :: (using cheat: *Repo, game: Process_Attach)
         u32.[0x4A0, 0xD10, 0x3E0, 0x118]
     );
 
-    strength_addr = cast(*u64)(cast(*u8)range_addr+0x118);
+    strength_addr = get_address_with_offset(range_addr, 0x118);;
 }
 
 repo_tp_menu :: (using repo: *Repo, game: Process_Attach)
@@ -118,8 +118,29 @@ repo_tp_menu :: (using repo: *Repo, game: Process_Attach)
 
     position = Vector3.{xx pos_x, xx pos_y, xx pos_z};
 
+    position_previous_address := cast(*u64)(cast(*u8)sprint_speed_addr+0xb0);
+
     ImGui.Text("Teleport");
     ImGui.Text("(%, %, %)", cast(int)position.x, cast(int)position.y, cast(int)position.z);
+
+    ImGui.SetNextItemWidth(150);
+    ImGui.InputFloat3("Custom Coordinate", *custom_coordinate_tp);
+    if ImGui.Button("Teleport##0")
+    {
+        print("Teleporting to position: %\n", custom_coordinate_tp);
+        pos_x: float32 = xx custom_coordinate_tp[0];
+        pos_y: float32 = xx custom_coordinate_tp[1]; 
+        pos_z: float32 = xx custom_coordinate_tp[2];
+
+        write_value(game, position_previous_address, *pos_x);
+        write_value(game, xx (cast(*u8)position_previous_address+4), *pos_y);
+        write_value(game, xx (cast(*u8)position_previous_address+8), *pos_z);
+
+        write_value(game, position_addr[0], *pos_x);
+        write_value(game, position_addr[1], *pos_y);
+        write_value(game, position_addr[2], *pos_z);
+    }
+
     ImGui.SetNextItemWidth(200);
     ImGui.InputText("Name", location_name_text.data, location_name_text.count);
     if ImGui.IsItemHovered() 
@@ -161,6 +182,11 @@ repo_tp_menu :: (using repo: *Repo, game: Process_Attach)
                 pos_x: float32 = xx pos.x;
                 pos_y: float32 = xx pos.y; 
                 pos_z: float32 = xx pos.z;
+
+                write_value(game, position_previous_address, *pos_x);
+                write_value(game, xx (cast(*u8)position_previous_address+4), *pos_y);
+                write_value(game, xx (cast(*u8)position_previous_address+8), *pos_z);
+
 
                 write_value(game, position_addr[0], *pos_x);
                 write_value(game, position_addr[1], *pos_y);

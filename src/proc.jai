@@ -102,6 +102,10 @@ get_module_base_addr :: (process: Process_Attach) -> *u64
     return module_base_addr;
 }
 
+get_address_with_offset :: (address: *u64, offset: int) -> *u64
+{
+    return cast(*u64)(cast(*u8)address + offset);
+}
 
 find_dynamic_memory_allocation_addr :: (attachment: Process_Attach, base_addr: *u64, offset: [] u32) -> *u64
 {

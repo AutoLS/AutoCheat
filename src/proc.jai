@@ -12,29 +12,61 @@ Process_Attach :: struct
 
     name: string;
     module_name: string;
+    module_size: u64;
     attached: bool;
+
+    cheat_dll: *void = null;
+    dll_thread: HANDLE;
 }
 
-attach_process :: (name: string, module_name: string) -> Process_Attach
+attach_process :: (game: *Process_Attach, name: string, module_name: string, dll_path: string = "")
 {
-    result: Process_Attach;
-    result.name = name;
-    result.module_name = module_name;
-    result.proc_id = get_process_id(name);
-
-    if result.proc_id != 0
+    if game.process
     {
-        result.process = OpenProcess(PROCESS_ALL_ACCESS, 0, result.proc_id);
-        if result.process
-        {
-            result.base_addr = get_module_base_addr(result);
-            result.attached = true;
-            print("FOUND: %, ID: %\n", name, result.proc_id);
-            print("Process Attached.\n");
-        }
+        CloseHandle(game.process);
     }
 
-    return result;
+    if game.cheat_dll != null && game.proc_id != 0
+    {
+        VirtualFreeEx(game.process, game.cheat_dll, 0, MEM_RELEASE);
+        CloseHandle(game.dll_thread);
+    }
+
+    game.name = name;
+    game.module_name = module_name;
+    game.proc_id = get_process_id(name);
+
+    if game.proc_id != 0
+    {
+        game.process = OpenProcess(PROCESS_ALL_ACCESS, 0, game.proc_id);
+        if game.process
+        {
+            get_module_base_addr(game);
+            game.attached = true;
+            print("FOUND: %, ID: %\n", name, game.proc_id);
+            print("Process Attached.\n");
+
+            if dll_path != ""
+            {
+                game.cheat_dll = VirtualAllocEx(game.process, null, xx (dll_path.count+1), MEM_COMMIT, PAGE_READWRITE);
+
+                if game.cheat_dll != null
+                {
+                    WriteProcessMemory(game.process, game.cheat_dll, temp_c_string(dll_path), xx (dll_path.count+1), null);
+
+                    kernel32base := GetModuleHandleA(temp_c_string("kernel32.dll"));
+                    game.dll_thread = CreateRemoteThread(game.process, null, 0, GetProcAddress(kernel32base, "LoadLibraryA"), game.cheat_dll, 0, null);
+
+                    exit_code: u32;
+                    WaitForSingleObject(game.dll_thread, INFINITE);
+                    GetExitCodeProcess(game.dll_thread, *exit_code);
+
+                    if game.dll_thread
+                        print("Injected dll.\n");
+                }
+            }
+        }
+    }
 }
 
 get_process_id :: (name: string) -> u32
@@ -70,7 +102,40 @@ get_process_id :: (name: string) -> u32
     return proc_id;
 }
 
-get_module_base_addr :: (process: Process_Attach) -> *u64
+get_module_base_addr :: (pid: DWORD, name: string) -> *u64, u64
+{
+    module_base_addr: *u64;
+    h_snap := CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, pid);
+
+    if h_snap != INVALID_HANDLE_VALUE
+    {
+        module_entry := MODULEENTRY32.{};
+        module_entry.dwSize = size_of(MODULEENTRY32);
+
+        while Module32Next(h_snap, *module_entry)
+        {
+            module_name := to_string(module_entry.szModule.data);
+            if compare(module_name,name) == 0
+            {
+                print("Module name: %, size: %\n", module_name, module_entry.modBaseSize);
+                module_base_addr = cast(*u64)module_entry.modBaseAddr;
+                print("Module address: %\n", module_base_addr);
+                CloseHandle(h_snap);
+                return module_base_addr, module_entry.modBaseSize;
+            }
+        }
+    }
+    else
+    {
+        print("Invalid handle value.\n");
+    }
+
+    CloseHandle(h_snap);
+
+    return module_base_addr, 0;
+}
+
+get_module_base_addr :: (process: *Process_Attach)
 {
     module_base_addr: *u64;
     h_snap := CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, process.proc_id);
@@ -87,8 +152,10 @@ get_module_base_addr :: (process: Process_Attach) -> *u64
             {
                 print("Module name: %, size: %\n", module_name, module_entry.modBaseSize);
                 module_base_addr = cast(*u64)module_entry.modBaseAddr;
+                print("Module address: %\n", module_base_addr);
                 CloseHandle(h_snap);
-                return module_base_addr;
+                process.base_addr = module_base_addr;
+                process.module_size = module_entry.modBaseSize;
             }
         }
     }
@@ -98,8 +165,6 @@ get_module_base_addr :: (process: Process_Attach) -> *u64
     }
 
     CloseHandle(h_snap);
-
-    return module_base_addr;
 }
 
 get_address_with_offset :: (address: *u64, offset: int) -> *u64
@@ -125,6 +190,52 @@ get_dynamic_memory_allocation_addr :: (attachment: Process_Attach, mem_addr_offs
     result := find_dynamic_memory_allocation_addr(attachment, cast(*u64)dynamic_ptr_base_addr, offset);
 
     return result;
+}
+
+pattern_scan :: (data: *u8, count: u64, pattern: [] u8) -> *u8
+{
+    for i : 0..(xx count - pattern.count)-1 
+    {
+        matched := true;
+        for j : 0..pattern.count-1
+        {
+            if data[i+j] != pattern[j] 
+            {
+                matched = false;
+                break;
+            }
+        }
+        if matched return data + i;
+    }
+
+    return null;
+}
+
+aob_scan_module :: (handle: HANDLE, base_addr: *u64, size: u64, pattern: [] u8) -> *u8
+{
+    buffer: *u8 = temporary_alloc(xx size);
+    read_bytes: u64 = 0;
+
+    final_address: *u8 = null;
+
+    if ReadProcessMemory(handle, cast(*void)base_addr, buffer, size, *read_bytes) == 0
+    {
+        print("Failed to read process memory.\n");
+        return final_address;
+    }
+
+    match_address := pattern_scan(buffer, size, pattern);
+    if match_address != null
+    {
+        final_address = match_address;
+        print("Pattern found at %\n", final_address);
+    }
+    else
+    {
+        print("Pattern not found.\n");
+    }
+
+    return final_address;
 }
 
 read_value :: (attachment: Process_Attach, mem_addr: *u64, value: *$T)

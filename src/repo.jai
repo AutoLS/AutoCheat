@@ -3,6 +3,8 @@ REPO_MODULE_NAME :: "UnityPlayer.dll";
 
 Repo :: struct
 {
+    found_base_address: bool;
+
     money: s32;
     hp: s32;
     max_hp: s32;
@@ -45,20 +47,28 @@ PlayerController:
 0x110 - SprintSpeed
 0x168 - JumpExtra
 0x174 - Gravity
-0x18D - DisableOvercharge
 0x194 - Stamina
+0x199 - DisableOvercharge
 
 PhysGrabber:
 0x118 - grabRange
 0x230 - grabStrength
+
+Inventory: 
+0x20 - InventorySpots
+    0x20 - Item[0]
+    0x28 - Item[1]
+
+ItemBattery:RemoveFullBar+3b - 48 63 47 74           - movsxd  rax,dword ptr [rdi+74] (729040739)
+ItemBattery:RemoveFullBar+3f - 2B 45 F0              - sub eax,[rbp-10]
 */
 
 init_repo_cheat :: (using cheat: *Repo, game: Process_Attach)
 {
     money_addr = get_dynamic_memory_allocation_addr
     (
-        game, 0x01C28DC0, 
-        u32.[0x78, 0x350, 0x978, 0x48]
+        game, 0x01D1F7A8, 
+        u32.[0x158, 0x80, 0x978, 0x48]
     );
 
     hp_addr = get_dynamic_memory_allocation_addr
@@ -81,23 +91,32 @@ init_repo_cheat :: (using cheat: *Repo, game: Process_Attach)
 
     sprint_speed_addr = get_dynamic_memory_allocation_addr
     (
-        game, 0x01CFFED8,
-        u32.[0x340, 0xEC0, 0x310, 0x110]
+        game, 0x01D002A8,
+        u32.[0x640, 0x1A0, 0x300, 0x110]
     );
 
-    stamina_addr = get_address_with_offset(sprint_speed_addr, 0x84);
-    max_stamina_addr = get_address_with_offset(stamina_addr, -0x4);
+    stamina_addr = get_address_with_offset(sprint_speed_addr, 0x94);
+    //max_stamina_addr = get_address_with_offset(stamina_addr, -0x4);
     extra_jumps_addr = get_address_with_offset(sprint_speed_addr, 0x58);
     gravity_addr = get_address_with_offset(sprint_speed_addr, 0x64);
-    disable_overcharge_addr = get_address_with_offset(sprint_speed_addr, 0x7D);
+    disable_overcharge_addr = get_address_with_offset(sprint_speed_addr, 0x89);
 
     range_addr = get_dynamic_memory_allocation_addr
     (
         game, 0x01CFFA88,
-        u32.[0x4A0, 0xD10, 0x3E0, 0x118]
+        u32.[0x3E0, 0xD10, 0x3F0, 0x118]
     );
 
-    strength_addr = get_address_with_offset(range_addr, 0x118);;
+    strength_addr = get_address_with_offset(range_addr, 0x118);
+
+    // if !found_base_address
+    // {
+    //     mono, mono_size := get_module_base_addr(game.proc_id, "mono-2.0-bdwgc.dll");
+    //     repo, repo_size := get_module_base_addr(game.proc_id, "REPO.exe");
+    //     app, app_size := get_module_base_addr(game.proc_id, "steamclient64.dll");
+    //     test := aob_scan_module(game.process, mono, mono_size, u8.[0x2B, 0x45, 0xF0]);
+    //     found_base_address = true;
+    // }
 }
 
 repo_tp_menu :: (using repo: *Repo, game: Process_Attach)
@@ -206,12 +225,11 @@ repo_tp_menu :: (using repo: *Repo, game: Process_Attach)
 
 repo_checkbox_cheats :: (using repo: *Repo, game: Process_Attach)
 {
-     ImGui.Checkbox("Unlimited Stamina", *unlimited_stamina);
+    ImGui.Checkbox("Unlimited Stamina", *unlimited_stamina);
     if unlimited_stamina
     {
-        read_value(game, max_stamina_addr, *max_stamina);
-        //print("MAX_STAMINA: %\n", max_stamina);
-        write_value(game, stamina_addr, *max_stamina);
+        value: float32 = -1;
+        write_value(game, stamina_addr, *value);
     }
 
     ImGui.Checkbox("God Mode", *god_mode);

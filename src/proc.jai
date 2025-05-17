@@ -32,6 +32,8 @@ attach_process :: (game: *Process_Attach, name: string, module_name: string, dll
         CloseHandle(game.dll_thread);
     }
 
+    << game = .{};
+
     game.name = name;
     game.module_name = module_name;
     game.proc_id = get_process_id(name);
@@ -43,7 +45,7 @@ attach_process :: (game: *Process_Attach, name: string, module_name: string, dll
         {
             get_module_base_addr(game);
             game.attached = true;
-            print("FOUND: %, ID: %\n", name, game.proc_id);
+            print("FOUND: %, ID: %, MODULE ADDRESS: %\n", name, game.proc_id, game.base_addr);
             print("Process Attached.\n");
 
             if dll_path != ""

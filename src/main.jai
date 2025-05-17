@@ -130,23 +130,23 @@ main :: ()
 			{
 				case .Abiotic_Factor;
 				{
-					cheat.game = attach_process(ABIOTIC_FACTOR_EXE_NAME, ABIOTIC_FACTOR_EXE_NAME);
+					attach_process(*cheat.game, ABIOTIC_FACTOR_EXE_NAME, ABIOTIC_FACTOR_EXE_NAME);
 					init_abf_cheat(*cheat.abf, cheat.game);
-				}
-				case .Ale_and_Tale;
-				{
-					cheat.game = attach_process(ALE_AND_TALE_EXE_NAME, ALE_AND_TALE_MODULE_NAME);
-					init_ale_and_tale_cheat(*cheat.ale_and_tale, cheat.game);
 				}
 				case .Supermarket_Together;
 				{
-					cheat.game = attach_process(SUPERMARKET_EXE_NAME, SUPERMARKET_MODULE_NAME);
+					attach_process(*cheat.game, SUPERMARKET_EXE_NAME, SUPERMARKET_MODULE_NAME);
 					init_supermarket_together_cheat(*cheat.spt, cheat.game);
 				}
 				case .Repo;
 				{
-					cheat.game = attach_process(REPO_EXE_NAME, REPO_MODULE_NAME);
+					attach_process(*cheat.game, REPO_EXE_NAME, REPO_MODULE_NAME);
 					init_repo_cheat(*cheat.repo, cheat.game);
+				}
+				case .Slormancer;
+				{
+					attach_process(*cheat.game, SLORMANCER_EXE_NAME, SLORMANCER_EXE_NAME);
+					init_slormancer_cheat(*cheat.slormancer, cheat.game);
 				}
 			}
 		} 
@@ -184,6 +184,7 @@ main :: ()
 				//if ImGui.MenuItem("Ale and Tale Tavern", null) cheat.current_game = .Ale_and_Tale;
 				//if ImGui.MenuItem("Supermarket Together", null) cheat.current_game = .Supermarket_Together;
 				if ImGui.MenuItem("Repo", null) cheat.current_game = .Repo;
+				if ImGui.MenuItem("The Slormancer", null) cheat.current_game = .Slormancer;
 			}
 		}
 
@@ -192,9 +193,9 @@ main :: ()
 			if cheat.current_game == 
 			{
 				case .Abiotic_Factor; abf_cheat_ui(*cheat.abf, cheat.game);
-				case .Ale_and_Tale; ale_and_tale_cheat_ui(*cheat.ale_and_tale, cheat.game);
 				case .Supermarket_Together; supermarket_cheat_ui(*cheat.spt, cheat.game);
 				case .Repo; repo_cheat_ui(*cheat.repo, cheat.game);
+				case .Slormancer; slormancer_cheat_ui(*cheat.slormancer, cheat.game);
 			}
 		}
 		else

@@ -2,13 +2,14 @@
 #load "ale_and_tale.jai";
 #load "supermarket_together.jai";
 #load "repo.jai";
+#load "slormancer.jai";
 
 Game_Name :: enum u32
 {
     Abiotic_Factor;
-    Ale_and_Tale;
     Supermarket_Together;
     Repo;
+    Slormancer;
 }
 
 Teleport_Data :: struct
@@ -27,16 +28,27 @@ Cheat :: struct
     exe_name_table: Table(Game_Name, string);
 
     abf: Abiotic_Factor;
-    ale_and_tale: Ale_and_Tale;
     spt: Supermarket_Together;
     repo: Repo;
+    slormancer: Slormancer_Cheat;
 }
 
 init_cheat :: (cheat: *Cheat)
 {
     table_add(*cheat.exe_name_table, .Abiotic_Factor, ABIOTIC_FACTOR_EXE_NAME);
-    table_add(*cheat.exe_name_table, .Ale_and_Tale, ALE_AND_TALE_EXE_NAME);
     table_add(*cheat.exe_name_table, .Supermarket_Together, SUPERMARKET_EXE_NAME);
     table_add(*cheat.exe_name_table, .Repo, REPO_EXE_NAME);
+    table_add(*cheat.exe_name_table, .Slormancer, SLORMANCER_EXE_NAME);
+}
+
+cheat_input_scalar :: (game: Process_Attach, text: string, address: *u64, value: *$T, step: T, type: ImGui.DataType)
+{
+    read_value(game, address, value);
+    ImGui.PushItemWidth(150);
+    if ImGui.InputScalar(temp_c_string(text), type, value, cast(*void)*step, cast(*void)*step, "%.0f")
+    {
+        write_value(game, address, value);
+    }
+    ImGui.PopItemWidth();
 }
 
